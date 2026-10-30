@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Store inventory product item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "n": { "type": "string" },
+        "c": { "type": "string" },
+        "sp": { "type": "string" },
+        "b": { "type": "number" },
+        "s": { "type": "number" },
+        "st": { "type": "number" },
+        "bc": { "type": "string" },
+        "ph": { "type": "string" },
+        "ex": { "type": "string" }
+      },
+      "required": ["id", "n", "s"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer record with debt/due balance",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "n": { "type": "string" },
+        "m": { "type": "string" },
+        "a": { "type": "string" },
+        "d": { "type": "number" },
+        "ph": { "type": "string" }
+      },
+      "required": ["id", "n"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Sale invoice record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "d": { "type": "string" },
+        "tm": { "type": "string" },
+        "ts": { "type": "number" },
+        "cid": { "type": "string" },
+        "cn": { "type": "string" },
+        "cm": { "type": "string" },
+        "tot": { "type": "number" },
+        "paid": { "type": "number" },
+        "due": { "type": "number" },
+        "cash": { "type": "number" },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "d", "tot", "paid"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Store daily expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "d": { "type": "string" },
+        "h": { "type": "string" },
+        "p": { "type": "string" },
+        "a": { "type": "number" },
+        "u": { "type": "string" }
+      },
+      "required": ["id", "d", "h", "a"]
+    },
+    "SupplierLedger": {
+      "title": "SupplierLedger",
+      "description": "Mohajon / Supplier ledger entries",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "d": { "type": "string" },
+        "sp": { "type": "string" },
+        "t": { "type": "string" },
+        "a": { "type": "number" },
+        "note": { "type": "string" }
+      },
+      "required": ["id", "d", "sp", "t", "a"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "Main shop configuration, settings, users, and closing records",
+      "type": "object",
+      "properties": {
+        "shop": { "type": "object" },
+        "users": { "type": "array" },
+        "cl": { "type": "object" },
+        "nt": { "type": "object" }
+      }
+    }
+  },
+  "firestore": {
+    "/x_pr/{productId}": {
+      "schema": "Product",
+      "description": "Products in inventory"
+    },
+    "/x_cu/{customerId}": {
+      "schema": "Customer",
+      "description": "Customers list"
+    },
+    "/x_sl/{saleId}": {
+      "schema": "Sale",
+      "description": "Sales history"
+    },
+    "/x_ex/{expenseId}": {
+      "schema": "Expense",
+      "description": "Store expenses"
+    },
+    "/x_mjl/{entryId}": {
+      "schema": "SupplierLedger",
+      "description": "Supplier debt and payment entries"
+    },
+    "/cfg/main": {
+      "schema": "Config",
+      "description": "Store configuration and users"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix ABC Enterprijse",
+  "description": "ABC Enterprijse - সম্পূর্ণ বিক্রয় কাউন্টার (POS), ইনভেন্টরি, হিসাব, ভাউচার প্রিন্ট ও ব্যবসা পরিচালনা সফটওয়্যার।",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
