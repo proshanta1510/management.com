@@ -39,7 +39,25 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
-  // Stale-While-Revalidate strategy for HTML and local assets
+  // Network-First for HTML / navigation requests to guarantee latest version
+  if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(req).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(req, responseToCache).catch(() => {});
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(req) || caches.match('/') || caches.match('/index.html');
+      })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for static assets and CDN fonts/scripts
   event.respondWith(
     caches.match(req).then(cached => {
       const fetchPromise = fetch(req).then(networkResponse => {
@@ -50,14 +68,10 @@ self.addEventListener('fetch', event => {
           });
         }
         return networkResponse;
-      }).catch(() => {
-        // Network failed, return cached if exists, else offline fallback for navigation
-        if (req.mode === 'navigate') {
-          return caches.match('/') || caches.match('/index.html');
-        }
-      });
+      }).catch(() => cached);
 
       return cached || fetchPromise;
     })
   );
 });
+

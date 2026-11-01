@@ -124,12 +124,15 @@ try {
 }
 catch (e) { }
 S = S || { shop: { n: 'দুর্গাপুর এন্টারপ্রাইজ', o: 'প্রশান্ত সরকার', m: '01922409976', e: 'pksarker1993@gmail.com' }, users: [{ u: 'admin', p: 'admin123', n: 'Admin', r: 'admin', pm: {} }], pr: [], cu: [], sl: [], ex: [], au: [], cl: {}, nt: {}, pu: [], rl: [], bk: 0, ph: 0, pe: 0, th: '#0f766e', dk: 0, lg: 'bn', n: 0, iv: 0 };
-['pay', 'mjl', 'pv', 'eh', 'pl2', 'od', 'rl', 'pu', 'ex', 'sl', 'cu', 'pr', 'au'].forEach(k => S[k] = S[k] || []);
+['pay', 'mjl', 'pv', 'eh', 'pl2', 'od', 'rl', 'pu', 'ex', 'sl', 'cu', 'pr', 'au', 'tx', 'rtn'].forEach(k => S[k] = S[k] || []);
 S.lo = S.lo || '';
 S.cl = S.cl || {};
 S.nt = S.nt || {};
 let ST = 'local', stT, RDY = false, RQ = [], CJ = '', SR = false, pushing = false, again = false, rft;
-const SK = ['pr', 'cu', 'sl', 'ex', 'au', 'pu', 'rl', 'pay', 'mjl', 'pv', 'pl2', 'od'], CK = ['shop', 'users', 'lo', 'vm', 'cl', 'nt', 'eh', 'bk', 'ph', 'pe'], kf = x => String((x && (x.id != null ? x.id : x._k)) || nid()).replace(/[\/\s]/g, '_'), LS = {};
+const SK = ['pr', 'cu', 'sl', 'ex', 'au', 'pu', 'rl', 'pay', 'mjl', 'pv', 'pl2', 'od', 'tx', 'rtn'];
+const CK = ['shop', 'users', 'lo', 'vm', 'cl', 'nt', 'eh', 'bk', 'ph', 'pe', 'ig', 'ib', 'ncd', 'acc', 'pa'];
+const kf = x => String((x && (x.id != null ? x.id : x._k)) || nid()).replace(/[\/\s]/g, '_');
+const LS = {};
 SK.forEach(k => LS[k] = {});
 let _ln = 0;
 const nid = () => { let n = Date.now() * 1000 + Math.floor(Math.random() * 1000); if (n <= _ln)
@@ -138,8 +141,8 @@ const lsave = () => { try {
     localStorage.setItem('dp', JSON.stringify(S));
 }
 catch (e) { } };
-function fix() { SK.forEach(k => { (k == 'au' || k == 'od' ? [...S[k]].reverse() : S[k]).forEach(x => { if (x.id == null && x._k == null)
-    x._k = String(nid()); if (!x._o)
+function fix() { SK.forEach(k => { (S[k] || []).filter(Boolean).forEach(x => { if (x && x.id == null && x._k == null)
+    x._k = String(nid()); if (x && !x._o)
     x._o = nid(); }); }); }
 const sv = () => { fix(); lsave(); pcat(); qsync(); };
 function qsync() { if (!DB || ST == 'ro')
@@ -210,7 +213,7 @@ function getSavedUser() {
         return null;
     }
 }
-function login() {
+async function login() {
     let un = ($('#lu').value || '').trim();
     let pw = $('#lp').value || '';
     if (!un || !pw) {
@@ -220,6 +223,30 @@ function login() {
     let list = (S && Array.isArray(S.users) && S.users.length) ? S.users : [{ u: 'admin', p: 'admin123', n: 'Admin', r: 'admin', pm: {} }];
     let u = list.find(x => x.u === un && x.p === pw);
     if (!u) {
+        if (!DB && typeof window.__getFirebaseDB === 'function') {
+            try {
+                let d = await window.__getFirebaseDB();
+                if (d) attachDb(d);
+            } catch (e) {}
+        }
+        if (DB && typeof DB.doc === 'function') {
+            $('#le').textContent = '⏳ ক্লাউড থেকে তথ্য যাচাই করা হচ্ছে...';
+            try {
+                let snap = await DB.doc('cfg/main').get();
+                let v = snap && typeof snap.data === 'function' ? snap.data() : (snap && snap.data);
+                if (v && Array.isArray(v.users)) {
+                    S.users = v.users;
+                    CK.forEach(k => { if (v[k] !== undefined) S[k] = v[k]; });
+                    lsave();
+                    let uCloud = S.users.find(x => x.u === un && x.p === pw);
+                    if (uCloud) {
+                        $('#le').textContent = '';
+                        enter(uCloud, 1);
+                        return;
+                    }
+                }
+            } catch (e) {}
+        }
         $('#le').textContent = 'ভুল ইউজারনেম বা পাসওয়ার্ড! সঠিক নাম ও পাসওয়ার্ড দিন';
         return;
     }
@@ -530,12 +557,23 @@ function rf() {
     }
 }
 function attachDb(d) {
-    if (!d || DB) return;
+    if (!d) return;
     DB = d;
     sst('sync');
     ssub();
     osub();
     pcat();
+    // ক্লাউডে শপ কনফিগ না থাকলে স্থানীয় ডাটা তাৎক্ষণিক পুশ করে ডাটাবেজ রেডি রাখা
+    setTimeout(() => {
+        if (DB) {
+            DB.doc('cfg/main').get().then(snap => {
+                let v = snap && typeof snap.data === 'function' ? snap.data() : (snap && snap.data);
+                if (!v || !v.shop) {
+                    qsync();
+                }
+            }).catch(() => {});
+        }
+    }, 1000);
 }
 try {
     if (window.__firebaseDB) {
@@ -543,12 +581,24 @@ try {
     } else {
         window.__onCloudDbInit = function(d) { attachDb(d); };
         window.addEventListener('cloud-db-ready', function(e) { attachDb(e.detail); });
+        if (typeof window.__getFirebaseDB === 'function') {
+            window.__getFirebaseDB().then(attachDb).catch(() => {});
+        }
         setTimeout(function() {
             if (!DB) {
-                sst('local');
-                setReady();
+                if (window.__firebaseDB) {
+                    attachDb(window.__firebaseDB);
+                } else if (typeof window.__getFirebaseDB === 'function') {
+                    window.__getFirebaseDB().then(attachDb).catch(() => {
+                        sst('local');
+                        setReady();
+                    });
+                } else {
+                    sst('local');
+                    setReady();
+                }
             }
-        }, 5000);
+        }, 4000);
     }
 }
 catch (e) {
@@ -558,7 +608,7 @@ catch (e) {
 
 // ===== ক্লাউড ডাটাবেজ স্ট্যাটাস মোডাল (যেকোনো ডিভাইস সংযোগ নিশ্চিত করতে) =====
 function showCloudStatusModal() {
-    let dbId = (DB && DB.databaseId) || (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.firestoreDatabaseId) || 'ai-studio-abcenterprijse-8669d64a-4e3a-43ec-bdc8-ff6d79327135';
+    let dbId = (DB && DB.databaseId) || (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.firestoreDatabaseId) || 'ai-studio-remixabcenterpri-f3333c6a-f8b6-4b20-9cf8-0037a0e1d8cc';
     let isConn = !!DB && ST !== 'err';
     let directUrl = location.origin + location.pathname;
     let qrHtml = typeof qrcode !== 'undefined' ? qrs(directUrl) : '';
@@ -597,7 +647,7 @@ function showCloudStatusModal() {
         </div>
 
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px;border-radius:10px;font-size:13px">
-            <b>📱 অন্য যেকোনো ডিভাইস বা মোবাইলে একই ডাটা দেখতে:</b>
+            <b>📱 যেকোনো ডিভাইস বা মোবাইলে একই ডাটা দেখতে:</b>
             <div style="margin:4px 0 6px;font-size:12px;color:#166534">দুই ডিভাইসেই নিচের একই লিংকে প্রবেশ করুন এবং লগইন করুন:</div>
             <div style="display:flex;gap:6px;align-items:center;margin:6px 0">
                 <input id="db-share-url" value="${directUrl}" readonly style="flex:1;font-size:12px;background:#fff">
@@ -617,33 +667,75 @@ function showCloudStatusModal() {
     md(h);
 }
 
-function testDbPing() {
+async function testDbPing() {
     let el = $('#ping-result');
     if (!el) return;
     el.innerHTML = '<span style="color:#f59e0b">⏳ ক্লাউড ডাটাবেজ পরীক্ষা হচ্ছে...</span>';
-    if (!DB || typeof DB.testPing !== 'function') {
-        el.innerHTML = '<span style="color:#dc2626">❌ ডাটাবেজ এখনো প্রস্তুত হচ্ছে। ২ সেকেন্ড পর আবার চাপুন।</span>';
-        return;
+    try {
+        if (!DB && typeof window.__getFirebaseDB === 'function') {
+            let d = await window.__getFirebaseDB();
+            if (d) attachDb(d);
+        }
+        if (!DB || typeof DB.testPing !== 'function') {
+            el.innerHTML = '<span style="color:#dc2626">❌ ডাটাবেজ এখনো প্রস্তুত হচ্ছে। ২ সেকেন্ড পর আবার চাপুন।</span>';
+            return;
+        }
+        let res = await DB.testPing();
+        let ms = typeof res === 'object' ? res.ms : res;
+        let dbName = (DB && DB.databaseId) || 'ai-studio-remixabcenterpri-f3333c6a-f8b6-4b20-9cf8-0037a0e1d8cc';
+        sst('sync');
+        el.innerHTML = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 10px;margin-top:6px;line-height:1.5;text-align:left">
+            <div style="color:#16a34a;font-weight:700">✅ ক্লাউড ডাটাবেজ সম্পূর্ণ সক্রিয় ও সফলভাবে কানেক্টেড!</div>
+            <div style="font-size:11px;color:#334155;margin-top:2px">
+                <b>রেসপন্স টাইম:</b> ${ms}ms · <b>ডাটাবেজ আইডি:</b> <code>${dbName}</code><br>
+                <b>লাইভ ব্যাকএন্ড সিঙ্ক:</b> সক্রিয় (যেকোনো ডিভাইসে পরিবর্তন করলে অন্য সব ডিভাইসে সাথে সাথে সেভ ও আপডেট হবে)
+            </div>
+        </div>`;
+    } catch (err) {
+        sst('err');
+        el.innerHTML = `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;margin-top:6px;color:#dc2626;text-align:left">
+            <b>⚠ টেস্ট ত্রুটি:</b> ${err && err.message ? err.message : err}
+        </div>`;
     }
-    DB.testPing().then(ms => {
-        el.innerHTML = `<span style="color:#16a34a">✅ ক্লাউড ডাটাবেজ সম্পূর্ণ সক্রিয় ও কানেক্টেড! রেসপন্স টাইম: <b>${ms}ms</b>।</span>`;
-    }).catch(err => {
-        el.innerHTML = `<span style="color:#dc2626">⚠ টেস্ট ত্রুটি: ${err.message}</span>`;
-    });
 }
 
-function forcePullFromCloud() {
+async function forcePullFromCloud() {
+    let el = $('#ping-result');
+    if (!DB && typeof window.__getFirebaseDB === 'function') {
+        try {
+            let d = await window.__getFirebaseDB();
+            if (d) attachDb(d);
+        } catch(e) {}
+    }
     if (!DB) return alert('ডাটাবেজ সংযোগ এখনো সক্রিয় হয়নি');
     SR = false;
     ssub();
+    if (el) el.innerHTML = '<span style="color:#16a34a">✅ ক্লাউড ডাটাবেজ থেকে ডাটা রিফ্রেশ করা হচ্ছে...</span>';
     alert('✅ ক্লাউড ডাটাবেজ থেকে ডাটা রিফ্রেশ করা হচ্ছে...');
-    setTimeout(rf, 500);
+    setTimeout(rf, 600);
 }
 
-function forcePushToCloud() {
-    if (!DB) return alert('ডাটাবেজ সংযোগ এখনো সক্রিয় হয়নি');
-    qsync();
-    alert('✅ বর্তমান সমস্ত ডাটা ক্লাউডে পাঠানো হচ্ছে...');
+async function forcePushToCloud() {
+    let el = $('#ping-result');
+    if (!DB && typeof window.__getFirebaseDB === 'function') {
+        try {
+            let d = await window.__getFirebaseDB();
+            if (d) attachDb(d);
+        } catch(e) {}
+    }
+    if (!DB) return alert('ডাটাবেজ সংযোগ এখনো সক্রিয় হয়নি। অনুগ্রহ করে ইন্টারনেট সংযোগ পরীক্ষা করুন।');
+    try {
+        if (el) el.innerHTML = '<span style="color:#f59e0b">⏳ ক্লাউডে ডাটা পাঠানো হচ্ছে...</span>';
+        CJ = '';
+        SK.forEach(k => LS[k] = {});
+        await push();
+        sst('sync');
+        if (el) el.innerHTML = '<span style="color:#16a34a">✅ ক্লাউডে সমস্ত ডাটা সফলভাবে সংরক্ষণ করা হয়েছে!</span>';
+        alert('✅ আপনার সমস্ত বর্তমান তথ্য (দোকানের তথ্য, ইউজার, পণ্য, বিক্রয়, খরচ, বাকি ইত্যাদি) ক্লাউড ডাটাবেজে সংরক্ষণ করা হয়েছে!');
+    } catch(err) {
+        if (el) el.innerHTML = `<span style="color:#dc2626">⚠ পুশ ত্রুটি: ${err.message}</span>`;
+        alert('পুশ করতে সমস্যা হয়েছে: ' + err.message);
+    }
 }
 function cash() { let d = td(), sl = S.sl.filter(x => x.d == d), s = sl.reduce((a, x) => a + x.tot, 0), c = sl.reduce((a, x) => a + x.cash, 0), e = S.ex.filter(x => x.d == d).reduce((a, x) => a + x.a, 0), r = S.rl.filter(x => x.d == d).reduce((a, x) => a + x.a, 0), k = Object.keys(S.cl).filter(x => x < d).sort().pop(), o = k ? S.cl[k].h : 0, pi = S.pay.filter(x => x.d == d).reduce((a, x) => a + x.a, 0); return { s, e, o, c, pi, r, h: o + c + pi - e - r }; }
 function cbx() { let c = cash(); $('#cb').innerHTML = `<span>${t('শুরুর ক্যাশ')}: <b>৳${f(c.o)}</b></span><span>${t('আজকের বিক্রয়')}: <b>৳${f(c.s)}</b></span><span>${t('আজকের খরচ')}: <b>৳${f(c.e)}</b></span><span>${t('হাতে আছে')}: <b>৳${f(c.h)}</b></span>`; }
